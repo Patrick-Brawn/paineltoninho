@@ -4,12 +4,22 @@ import { Trash2, PlusCircle } from 'lucide-react'
 import Header from '../components/Header.jsx'
 import { getProducts, getOrders, saveOrder, uid } from '../data/storage.js'
 
+// Pesos "redondos" disponíveis pra venda, em GRAMAS
+const WEIGHT_OPTIONS = [250, 500, 750, 1000, 1500, 2000, 2500, 3000, 4000, 5000]
+
+function formatWeight(grams) {
+  if (grams < 1000) return `${grams}g`
+  const kg = grams / 1000
+  const kgStr = Number.isInteger(kg) ? String(kg) : kg.toFixed(1).replace('.', ',')
+  return `${kgStr}kg`
+}
+
 function emptyItem(products) {
   const p = products[0]
   return {
     key: uid(),
     productId: p ? p.id : '',
-    qty: '',
+    qty: WEIGHT_OPTIONS[1], // 500g como padrão
   }
 }
 
@@ -36,7 +46,8 @@ export default function NovaVenda() {
           order.items.map((it) => ({
             key: uid(),
             productId: it.productId,
-            qty: String(it.qty),
+            // venda antiga guarda qty em kg (float); convertemos pra gramas
+            qty: Math.round((it.qty || 0) * 1000),
           }))
         )
       }
@@ -60,15 +71,23 @@ export default function NovaVenda() {
     return products.find((p) => p.id === pid)
   }
 
+  // gera a lista de opções do dropdown, garantindo que o valor atual do item
+  // sempre apareça (mesmo que seja um peso "antigo" que não é redondo)
+  function optionsFor(qty) {
+    if (WEIGHT_OPTIONS.includes(qty)) return WEIGHT_OPTIONS
+    return [...WEIGHT_OPTIONS, qty].sort((a, b) => a - b)
+  }
+
   const builtItems = items
     .map((it) => {
       const product = productById(it.productId)
-      const qty = parseFloat(it.qty.toString().replace(',', '.')) || 0
-      const subtotal = product ? qty * product.salePrice : 0
+      const qtyGrams = it.qty || 0
+      const qtyKg = qtyGrams / 1000
+      const subtotal = product ? qtyKg * product.salePrice : 0
       return {
         productId: it.productId,
         productName: product ? product.name : '',
-        qty,
+        qty: qtyKg,
         unitPrice: product ? product.salePrice : 0,
         subtotal,
       }
@@ -151,7 +170,8 @@ export default function NovaVenda() {
           <div className="space-y-2.5">
             {items.map((it) => {
               const product = productById(it.productId)
-              const qty = parseFloat(it.qty.toString().replace(',', '.')) || 0
+              const qtyGrams = it.qty || 0
+              const qtyKg = qtyGrams / 1000
               return (
                 <div key={it.key} className="bg-kraft-card stitch-border rounded-xl p-3">
                   <div className="flex gap-2">
@@ -166,14 +186,17 @@ export default function NovaVenda() {
                         </option>
                       ))}
                     </select>
-                    <input
-                      type="text"
-                      inputMode="decimal"
+                    <select
                       value={it.qty}
-                      onChange={(e) => updateItem(it.key, 'qty', e.target.value)}
-                      placeholder="Kg"
-                      className="w-16 bg-transparent border-b border-torrado/20 py-1.5 text-sm text-torrado text-right font-mono"
-                    />
+                      onChange={(e) => updateItem(it.key, 'qty', Number(e.target.value))}
+                      className="w-24 bg-transparent border-b border-torrado/20 py-1.5 text-sm text-torrado text-right font-mono"
+                    >
+                      {optionsFor(it.qty).map((g) => (
+                        <option key={g} value={g}>
+                          {formatWeight(g)}
+                        </option>
+                      ))}
+                    </select>
                     <button
                       type="button"
                       onClick={() => removeItem(it.key)}
@@ -183,11 +206,11 @@ export default function NovaVenda() {
                       <Trash2 size={16} />
                     </button>
                   </div>
-                  {product && qty > 0 && (
+                  {product && qtyGrams > 0 && (
                     <p className="text-right text-xs font-mono text-torrado/55 mt-1.5">
-                      {qty}kg × R$ {product.salePrice.toFixed(2)} ={' '}
+                      {formatWeight(qtyGrams)} × R$ {product.salePrice.toFixed(2)}/kg ={' '}
                       <span className="text-torrado font-semibold">
-                        R$ {(qty * product.salePrice).toFixed(2)}
+                        R$ {(qtyKg * product.salePrice).toFixed(2)}
                       </span>
                     </p>
                   )}
