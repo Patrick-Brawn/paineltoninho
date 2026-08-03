@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: 'Work Sans', sans-serif;
+  background-color: #F7EFE1;
+  background-image: radial-gradient(rgba(43,27,18,0.05) 1px, transparent 1px);
+  background-size: 14px 14px;
+  color: #1F1B16;
+  overscroll-behavior-y: contain;
+}
+
+.app-shell {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  background: #F7EFE1;
+  position: relative;
+  box-shadow: 0 0 40px rgba(43,27,18,0.15);
+}
+
+@media (min-width: 481px) {
+  body {
+    background-color: #EEE2CC;
+  }
+}
+
+.stitch-border {
+  border: 1.5px dashed rgba(43,27,18,0.28);
+}
+
+.font-display {
+  font-family: 'Fraunces', serif;
+}
+
+.font-mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+input:focus, select:focus, textarea:focus, button:focus-visible {
+  outline: 2px solid #C68A3D;
+  outline-offset: 2px;
+}
