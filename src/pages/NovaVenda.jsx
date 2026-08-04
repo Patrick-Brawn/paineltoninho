@@ -4,22 +4,16 @@ import { Trash2, PlusCircle } from 'lucide-react'
 import Header from '../components/Header.jsx'
 import { getProducts, getOrders, saveOrder, uid } from '../data/storage.js'
 
-// Pesos "redondos" disponíveis pra venda, em GRAMAS
-const WEIGHT_OPTIONS = [250, 500, 750, 1000, 1500, 2000, 2500, 3000, 4000, 5000]
-
-function formatWeight(grams) {
-  if (grams < 1000) return `${grams}g`
-  const kg = grams / 1000
-  const kgStr = Number.isInteger(kg) ? String(kg) : kg.toFixed(1).replace('.', ',')
-  return `${kgStr}kg`
-}
+// Sugestões de pesos "redondos" (em kg) — aparecem como autocompletar,
+// mas o campo continua digitável e aceita qualquer valor
+const ROUND_WEIGHTS = ['0,1', '0,25', '0,5', '0,75', '1', '1,5', '2', '2,5', '3', '4', '5']
 
 function emptyItem(products) {
   const p = products[0]
   return {
     key: uid(),
     productId: p ? p.id : '',
-    qty: WEIGHT_OPTIONS[1], // 500g como padrão
+    qty: '',
   }
 }
 
@@ -46,8 +40,7 @@ export default function NovaVenda() {
           order.items.map((it) => ({
             key: uid(),
             productId: it.productId,
-            // venda antiga guarda qty em kg (float); convertemos pra gramas
-            qty: Math.round((it.qty || 0) * 1000),
+            qty: String(it.qty),
           }))
         )
       }
@@ -71,23 +64,15 @@ export default function NovaVenda() {
     return products.find((p) => p.id === pid)
   }
 
-  // gera a lista de opções do dropdown, garantindo que o valor atual do item
-  // sempre apareça (mesmo que seja um peso "antigo" que não é redondo)
-  function optionsFor(qty) {
-    if (WEIGHT_OPTIONS.includes(qty)) return WEIGHT_OPTIONS
-    return [...WEIGHT_OPTIONS, qty].sort((a, b) => a - b)
-  }
-
   const builtItems = items
     .map((it) => {
       const product = productById(it.productId)
-      const qtyGrams = it.qty || 0
-      const qtyKg = qtyGrams / 1000
-      const subtotal = product ? qtyKg * product.salePrice : 0
+      const qty = parseFloat(it.qty.toString().replace(',', '.')) || 0
+      const subtotal = product ? qty * product.salePrice : 0
       return {
         productId: it.productId,
         productName: product ? product.name : '',
-        qty: qtyKg,
+        qty,
         unitPrice: product ? product.salePrice : 0,
         subtotal,
       }
@@ -139,6 +124,12 @@ export default function NovaVenda() {
     <div>
       <Header title={id ? 'Editar Venda' : 'Nova Venda'} subtitle="Lance uma encomenda" />
 
+      <datalist id="round-weights">
+        {ROUND_WEIGHTS.map((w) => (
+          <option key={w} value={w} />
+        ))}
+      </datalist>
+
       <form onSubmit={handleSubmit} className="px-5 mt-5 space-y-5">
         <div>
           <label className="block text-xs font-semibold text-torrado/60 uppercase tracking-wide mb-1.5">
@@ -170,8 +161,7 @@ export default function NovaVenda() {
           <div className="space-y-2.5">
             {items.map((it) => {
               const product = productById(it.productId)
-              const qtyGrams = it.qty || 0
-              const qtyKg = qtyGrams / 1000
+              const qty = parseFloat(it.qty.toString().replace(',', '.')) || 0
               return (
                 <div key={it.key} className="bg-kraft-card stitch-border rounded-xl p-3">
                   <div className="flex gap-2">
@@ -186,17 +176,15 @@ export default function NovaVenda() {
                         </option>
                       ))}
                     </select>
-                    <select
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      list="round-weights"
                       value={it.qty}
-                      onChange={(e) => updateItem(it.key, 'qty', Number(e.target.value))}
-                      className="w-24 bg-transparent border-b border-torrado/20 py-1.5 text-sm text-torrado text-right font-mono"
-                    >
-                      {optionsFor(it.qty).map((g) => (
-                        <option key={g} value={g}>
-                          {formatWeight(g)}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(e) => updateItem(it.key, 'qty', e.target.value)}
+                      placeholder="Kg"
+                      className="w-16 bg-transparent border-b border-torrado/20 py-1.5 text-sm text-torrado text-right font-mono"
+                    />
                     <button
                       type="button"
                       onClick={() => removeItem(it.key)}
@@ -206,11 +194,11 @@ export default function NovaVenda() {
                       <Trash2 size={16} />
                     </button>
                   </div>
-                  {product && qtyGrams > 0 && (
+                  {product && qty > 0 && (
                     <p className="text-right text-xs font-mono text-torrado/55 mt-1.5">
-                      {formatWeight(qtyGrams)} × R$ {product.salePrice.toFixed(2)}/kg ={' '}
+                      {qty}kg × R$ {product.salePrice.toFixed(2)} ={' '}
                       <span className="text-torrado font-semibold">
-                        R$ {(qtyKg * product.salePrice).toFixed(2)}
+                        R$ {(qty * product.salePrice).toFixed(2)}
                       </span>
                     </p>
                   )}
